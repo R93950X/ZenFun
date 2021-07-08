@@ -1,10 +1,13 @@
 local w, h = term.getSize()
+local UIWidth = 10
+local gameSpeed = 1
+w = w-UIWidth
 
 local world = {}
 local worldLine = {}
 local UI = {}
 
-for i = 1, w-6 do
+for i = 1, w do
     table.insert(worldLine, 32768)
 end
 for i = 1, h do
@@ -47,24 +50,29 @@ local function draw(image,x,y)
     
 end
 
-world[1][1] = colors.green
-world[h][w-6] = colors.red
+world[1][1] = colors.blue
+world[h][1] = colors.yellow
+world[h][w] = colors.red
+world[1][w] = colors.lime
 local turn = 0
 
 local playersC = {
-    [(colors.green)] = 0,
-    [(colors.red)] = 1
+    [(colors.blue)] = 0,
+    [(colors.red)] = 1,
+    [(colors.lime)] = 2,
+    [(colors.yellow)] = 3
 }
 
 local players = {
     [0] = {
-        color = colors.green,
+        color = colors.blue,
         movesPerTurn = 3,
         growth = 50,
         resist = 10,
         die = 10,
         upgrade = 1,
-        moves = 0
+        moves = 0,
+        alive = true
     },
     [1] = {
         color = colors.red,
@@ -73,15 +81,40 @@ local players = {
         resist = 10,
         die = 10,
         upgrade = 1,
-        moves = 0
+        moves = 0,
+        alive = true
+    },
+    [2] = {
+        color = colors.lime,
+        movesPerTurn = 3,
+        growth = 50,
+        resist = 10,
+        die = 10,
+        upgrade = 1,
+        moves = 0,
+        alive = true
+    },
+    [3] = {
+        color = colors.yellow,
+        movesPerTurn = 3,
+        growth = 50,
+        resist = 10,
+        die = 10,
+        upgrade = 1,
+        moves = 0,
+        alive = true
     }
 }
 
 local function tickBoard()
     local updates = {}
+    for i in pairs(players) do
+        players[i].alive = false
+    end
     for y, l in pairs(world) do
         for x, v in pairs(l) do
             if v ~= 32768 then
+                players[playersC[v]].alive = true
                 if math.random()*100 <= players[playersC[v]].growth then
                     local yOffset = math.random(-1,1)
                     local xOffset = math.random(-1,1)
@@ -117,7 +150,7 @@ local function tickBoard()
                         end
                     end
                 end
-                if math.random()*100 <= (players[playersC[v]].die * (100 - players[playersC[v]].resist)/100) then
+                if math.random()*100 < (players[playersC[v]].die * (100 - players[playersC[v]].resist)/100) then
                     if not updates[y] then
                         updates[y] = {}
                     end
@@ -133,82 +166,145 @@ local function tickBoard()
     end
 end
 
+local function scaleCost()
+    players[turn].upgrade = math.ceil(players[turn].upgrade * 1.05)
+end
+
 function redrawUI()
     term.setBackgroundColor(players[turn].color)
-    term.setCursorPos(w-4,1)
-    term.write(string.format("% 5d", players[turn].moves))
-    term.setCursorPos(w-4,3)
-    term.write(" +"..string.format("% 3d", players[turn].movesPerTurn))
-    term.setCursorPos(w-4,4)
-    term.write("+"..string.format("% 3d", players[turn].growth).."%")
-    term.setCursorPos(w-4,5)
-    term.write("|"..string.format("% 3d", players[turn].resist).."%")
-    term.setCursorPos(w-4,6)
-    term.write("-"..string.format("% 3d", players[turn].die).."%")
-    term.setCursorPos(w-4,7)
-    term.write("U"..string.format("% 4d", players[turn].upgrade).."")
-    term.setCursorPos(w-4,9)
+    term.setCursorPos(w+2,1)
+    term.write(string.format("% "..(UIWidth-1).."d", players[turn].moves))
+    term.setCursorPos(w+2,3)
+    term.write(" +"..string.format("% "..(UIWidth-3).."d", players[turn].movesPerTurn * gameSpeed))
+    term.setCursorPos(w+2,4)
+    term.write("+"..string.format("% "..(UIWidth-3).."d", players[turn].growth).."%")
+    term.setCursorPos(w+2,5)
+    term.write("|"..string.format("% "..(UIWidth-3).."d", players[turn].resist).."%")
+    term.setCursorPos(w+2,6)
+    term.write("-"..string.format("% "..(UIWidth-3).."d", players[turn].die).."%")
+    term.setCursorPos(w+2,7)
+    term.write("U"..string.format("% "..(UIWidth-2).."d", players[turn].upgrade).."")
+    term.setCursorPos(w+2,9)
     term.write(" end ")
 end
 
-term.clear()
-gameSpeed = 1
-while true do
-    draw(world,1,1)
-    draw(UI,w-5,1)
-
-    players[turn].moves = players[turn].moves + gameSpeed*players[turn].movesPerTurn
-    repeat
-        draw(UI,w-5,1)
-        redrawUI()
-        local event, button, x, y
-        repeat
-            event, button, x, y = os.pullEvent("mouse_click")
-        until button == 1
-        if x >= w - 4 then
-            if players[turn].moves >= players[turn].upgrade and y >= 3 and y <= 6  then
-                players[turn].moves = players[turn].moves - players[turn].upgrade
-                players[turn].upgrade = math.ceil(players[turn].upgrade + 2)
-                if y == 3 then
-                    players[turn].movesPerTurn = players[turn].movesPerTurn + 1
-                elseif y == 4 then
-                    players[turn].growth = players[turn].growth + 1
-                elseif y == 5 then
-                    players[turn].resist = players[turn].resist + 1
-                elseif y == 6 then
-                    players[turn].die = players[turn].die - 1
-                end
+function takeSpot(x, y)
+    if (world[y][x] == 32768) then
+        world[y][x] = players[turn].color
+        term.setCursorPos(x, y)
+        term.setBackgroundColor(players[turn].color)
+        term.write(" ")
+        players[turn].moves = players[turn].moves - gameSpeed
+        return true
+    elseif world[y][x] ~= players[turn].color then
+        while true do
+            players[turn].moves = players[turn].moves - gameSpeed
+            if math.random()*100 > players[playersC[world[y][x]]].resist then
+                world[y][x] = players[turn].color
+                term.setCursorPos(x, y)
+                term.setBackgroundColor(players[turn].color)
+                term.write(" ")
+                return true
             end
-        elseif players[turn].moves >= 1 then
-            if world[y][x] ~= players[turn].color
-            and (
-               (world[y  ] and (world[y  ][x+1] == players[turn].color))
-            or (world[y  ] and (world[y  ][x-1] == players[turn].color))
-            or (world[y+1] and (world[y+1][x-1] == players[turn].color))
-            or (world[y+1] and (world[y+1][x  ] == players[turn].color))
-            or (world[y+1] and (world[y+1][x+1] == players[turn].color))
-            or (world[y-1] and (world[y-1][x-1] == players[turn].color))
-            or (world[y-1] and (world[y-1][x  ] == players[turn].color))
-            or (world[y-1] and (world[y-1][x+1] == players[turn].color))
-            ) then
-                if (world[y][x] == 32768) or (math.random()*100 > players[playersC[world[y][x]]].resist) then
-                    world[y][x] = players[turn].color
-                end
-                players[turn].moves = players[turn].moves - 1
+            if players[turn].moves < gameSpeed then
+                return false
             end
-            draw(world,1,1)
-        end
-    until y == 9 and x >= w - 4
-    
-    redrawUI()
-    
-    if turn == #players then
-        for i = 1, gameSpeed do
-            tickBoard()
         end
     end
+end
 
-    turn = (turn + 1)%(1 + #players)
+term.clear()
+while true do
+    draw(world,1,1)
+    draw(UI,w+1,1)
+    draw(world,1,1)
+
+    for index in pairs(playersC) do
+        if players[turn].alive then
+            players[turn].moves = players[turn].moves + gameSpeed*players[turn].movesPerTurn
+            local selected = nil
+            repeat
+                redrawUI()
+                local event, button, x, y
+                repeat
+                    event, button, x, y = os.pullEvent("mouse_click")
+                until (button == 1 or (button == 2 and x < w + 2)) and y <= h
+                if x >= w+1 then
+                    if players[turn].moves >= players[turn].upgrade and y >= 3 and y <= 6  then
+                        if y == 3 and players[turn].movesPerTurn < 100 then
+                            players[turn].movesPerTurn = players[turn].movesPerTurn + 1
+                            players[turn].moves = players[turn].moves - players[turn].upgrade
+                            scaleCost()
+                        elseif y == 4 and players[turn].growth < 100 then
+                            players[turn].growth = players[turn].growth + 1
+                            players[turn].moves = players[turn].moves - players[turn].upgrade
+                            scaleCost()
+                        elseif y == 5 and players[turn].resist < 95 then
+                            players[turn].resist = players[turn].resist + 1
+                            players[turn].moves = players[turn].moves - players[turn].upgrade
+                            scaleCost()
+                        elseif y == 6 and players[turn].die > 0 then
+                            players[turn].die = players[turn].die - 1
+                            players[turn].moves = players[turn].moves - players[turn].upgrade
+                            scaleCost()
+                        end
+                    end
+                elseif players[turn].moves >= gameSpeed then
+                    if world[y][x] == players[turn].color then
+                        if selected and selected.y == y and selected.x == x then
+                            selected = nil
+                            term.setCursorPos(x, y)
+                            term.setBackgroundColor(players[turn].color)
+                            term.write(" ")
+                        elseif not selected then
+                            selected = {x=x, y=y}
+                            term.setCursorPos(x, y)
+                            term.setBackgroundColor(colors.white)
+                            term.write(" ")
+                        end
+                    elseif selected then
+                        local pos = {x=selected.x, y=selected.y}
+                        while players[turn].moves >= gameSpeed do
+                            if pos.x < x then pos.x = pos.x + 1 end
+                            if pos.x > x then pos.x = pos.x - 1 end
+                            if pos.y < y then pos.y = pos.y + 1 end
+                            if pos.y > y then pos.y = pos.y - 1 end
+                            --print(pos.x, x, pos.y, y)
+                            --sleep(1)
+                            if world[y][x] ~= players[turn].color then
+                                takeSpot(pos.x, pos.y)
+                            end
+                            if (pos.x == x and pos.y == y and world[y][x] == players[turn].color)
+                            then
+                                break
+                            end
+                        end
+                    elseif world[y][x] ~= players[turn].color
+                        and (
+                           (world[y  ] and (world[y  ][x+1] == players[turn].color))
+                        or (world[y  ] and (world[y  ][x-1] == players[turn].color))
+                        or (world[y+1] and (world[y+1][x-1] == players[turn].color))
+                        or (world[y+1] and (world[y+1][x  ] == players[turn].color))
+                        or (world[y+1] and (world[y+1][x+1] == players[turn].color))
+                        or (world[y-1] and (world[y-1][x-1] == players[turn].color))
+                        or (world[y-1] and (world[y-1][x  ] == players[turn].color))
+                        or (world[y-1] and (world[y-1][x+1] == players[turn].color))
+                        ) then
+                        takeSpot(x, y)
+                    end
+                end
+            until y == 9 and x >= w + 2
+
+            redrawUI()
+        end
+
+        turn = (turn + 1)%(1 + #players)
+    end
+
+
+    for i = 1, gameSpeed do
+        tickBoard()
+    end
 
     sleep(1/20)
 end
