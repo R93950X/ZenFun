@@ -2,7 +2,7 @@
 -- Anything not labeled with "-- Medit" was copied from
 -- ComputerCraft 1.95.3 (CraftOS-PC v2.5.5)
 local function nonlocalize(str)
-    return str:gsub("nonlocal%s+([%w%s_,]+)=", function(m) return m:gsub("(%w[%w_]*)", "_G+.%1") .. "=" end)
+    return str:gsub("nonlocal%s+([%w%s_,]+)=", function(m) return m:gsub("(%w[%w_]*)", "_G.%1") .. "=" end)
 end
 local function unnonlocalize(str)
     return str:gsub("_G%.[%w%s%._,]+=", function(m)
