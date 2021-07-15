@@ -113,7 +113,7 @@ end
 function takeLine(player, x, y, x2, y2)
     local success = true
     while players[player].points >= gameSpeed and
-    not (x == x2 or y == y2 and success == true) do
+    not (x == x2 and y == y2 and success == true) do
         if success then
             if math.abs(x2 - x) > math.abs(y2 - y) then
                 x = x > x2 and x - 1 or x + 1
@@ -140,7 +140,7 @@ local upgrades = {
 local playerSelection
 
 function playerTurn(player)
-    players[player].points = players[player].points + players[player].pointsPerTurn
+    players[player].points = players[player].points + players[player].pointsPerTurn * gameSpeed
     repeat
         drawUI(player)
         local event, button, x, y
