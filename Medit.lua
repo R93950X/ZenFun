@@ -1,6 +1,6 @@
--- Medit (thx JackMacWindows)
 -- Anything not labeled with "-- Medit" was copied from
 -- ComputerCraft 1.95.3 (CraftOS-PC v2.5.5)
+-- Medit (thx JackMacWindows)
 local function nonlocalize(str)
     return str:gsub("nonlocal%s+([%w%s_,]+)=", function(m) return m:gsub("(%w[%w_]*)", "_G.%1") .. "=" end)
 end
@@ -56,6 +56,10 @@ if term.isColour() then
     keywordColour = colours.yellow
     commentColour = colours.green
     stringColour = colours.red
+    -- Medit
+    badwordColor = colors.gray
+    funnywordColor = colors.pink
+    -- Medit
 else
     bgColour = colours.black
     textColour = colours.white
@@ -184,6 +188,29 @@ local tKeywords = {
     ["while"] = true,
 }
 
+-- Medit
+local tBadwords = {
+    ["fuck"] = true,
+    ["shit"] = true,
+    ["damn"] = true,
+    ["bitch"] = true,
+    ["cock"] = true,
+    ["cunt"] = true,
+    ["whore"] = true,
+    ["pussy"] = true,
+    ["ass"] = true,
+    ["frick"] = true,
+    ["dildo"] = true,
+    ["fortnite"] = true,
+}
+
+local tFunnywords = {
+    ["penis"] = true,
+    ["sex"] = true,
+    ["sus"] = true,
+}
+-- Medit
+
 local function tryWrite(sLine, regex, colour)
     local match = string.match(sLine, regex)
     if match then
@@ -212,7 +239,13 @@ local function writeHighlighted(sLine)
             tryWrite(sLine, "^[%w_]+", function(match)
                 if tKeywords[match] then
                     return keywordColour
+                -- Medit
+                elseif tBadwords[string.lower(match)] then
+                    return badwordColor
+                elseif tFunnywords[string.lower(match)] then
+                    return funnywordColor
                 end
+                -- Medit
                 return textColour
             end) or
             tryWrite(sLine, "^[^%w_]", textColour)

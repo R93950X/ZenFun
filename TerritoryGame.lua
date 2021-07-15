@@ -66,22 +66,24 @@ local playersC = {
 local players = {
     [0] = {
         color = colors.blue,
-        movesPerTurn = 3,
+        movesPerTurn = 3000,
         growth = 50,
         resist = 10,
         die = 10,
         upgrade = 1,
         moves = 0,
+        count = 1,
         alive = true
     },
     [1] = {
         color = colors.red,
         movesPerTurn = 3,
-        growth = 50,
+        growth = 100,
         resist = 10,
         die = 10,
         upgrade = 1,
         moves = 0,
+        count = 1,
         alive = true
     },
     [2] = {
@@ -92,6 +94,7 @@ local players = {
         die = 10,
         upgrade = 1,
         moves = 0,
+        count = 1,
         alive = true
     },
     [3] = {
@@ -102,6 +105,7 @@ local players = {
         die = 10,
         upgrade = 1,
         moves = 0,
+        count = 1,
         alive = true
     }
 }
@@ -161,6 +165,12 @@ local function tickBoard()
     end
     for y, l in pairs(updates) do
         for x, v in pairs(l) do
+            if world[y][x] ~= 32768 then
+                players[playersC[world[y][x]]].count = players[playersC[world[y][x]]].count - 1
+            end
+            if v ~= 32768 then
+                players[playersC[v]].count = players[playersC[v]].count + 1
+            end
             world[y][x] = v
         end
     end
@@ -186,11 +196,14 @@ function redrawUI()
     term.write("U"..string.format("% "..(UIWidth-2).."d", players[turn].upgrade).."")
     term.setCursorPos(w+2,9)
     term.write(" end ")
+    term.setCursorPos(w+2,11)
+    term.write(string.format("% "..(UIWidth-1).."d", players[turn].count))
 end
 
 function takeSpot(x, y)
     if (world[y][x] == 32768) then
         world[y][x] = players[turn].color
+        players[turn].count = players[turn].count+1
         term.setCursorPos(x, y)
         term.setBackgroundColor(players[turn].color)
         term.write(" ")
@@ -201,6 +214,8 @@ function takeSpot(x, y)
             players[turn].moves = players[turn].moves - gameSpeed
             if math.random()*100 > players[playersC[world[y][x]]].resist then
                 world[y][x] = players[turn].color
+                players[turn].count = players[turn].count+1
+                players[playersC[world[y][x]]].count = players[playersC[world[y][x]]].count-1
                 term.setCursorPos(x, y)
                 term.setBackgroundColor(players[turn].color)
                 term.write(" ")
@@ -213,16 +228,31 @@ function takeSpot(x, y)
     end
 end
 
+local selected, lastTurn
+
 term.clear()
 while true do
     draw(world,1,1)
     draw(UI,w+1,1)
     draw(world,1,1)
-
+    
     for index in pairs(playersC) do
         if players[turn].alive then
+            if index == lastTurn then
+                term.setBackgroundColor(colors.black)
+                term.clear()
+                term.setCursorPos(1, 1)
+                print(index.." won!")
+                return
+            end
+            lastTurn = index
             players[turn].moves = players[turn].moves + gameSpeed*players[turn].movesPerTurn
-            local selected = nil
+            if selected then
+                term.setCursorPos(selected.x, selected.y)
+                term.setBackgroundColor(world[selected.y][selected.x])
+                term.write(" ")
+            end
+            selected = nil
             repeat
                 redrawUI()
                 local event, button, x, y
@@ -302,9 +332,7 @@ while true do
     end
 
 
-    for i = 1, gameSpeed do
-        tickBoard()
-    end
+
 
     sleep(1/20)
 end
